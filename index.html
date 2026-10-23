@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="utf-8">
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <title>가족앨범</title>
+        <link
+            rel="icon"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B8%3C/text%3E%3C/svg%3E">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div id="app">
+            <div id="top">
+                <button id="back"></button>
+                <span id="ttl"></span>
+                <button id="add">＋</button>
+            </div>
+            <div id="main"></div>
+            <button id="th" aria-label="화면 모드"></button>
+            <div id="tabs">
+                <button data-t="lib">
+                    <span>&#x1F5BC;&#xFE0F;</span>보관함</button>
+                <button data-t="alb">
+                    <span>&#x1F4C1;</span>모음</button>
+            </div>
+        </div>
+        <div id="viewer">
+            <div id="vbar">
+                <button id="vx" aria-label="뒤로">
+                    <svg
+                        viewbox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                </button>
+                <button id="vdt">
+                    <b id="vt1"></b>
+                    <span id="vds"></span></button>
+                <span class="sp"></span></div>
+            <div id="vs"></div>
+            <div id="vstrip"></div>
+            <div id="vtool">
+                <button id="vsh" aria-label="공유">
+                    <svg
+                        viewbox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"><path
+                        d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 00-1 1v8a1 1 0 001 1h14a1 1 0 001-1v-8a1 1 0 00-1-1h-1"/></svg>
+                </button>
+                <div class="pil">
+                    <button id="vh" aria-label="즐겨찾기"></button>
+                </div>
+                <button id="vd" aria-label="삭제">
+                    <svg
+                        viewbox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+                    <span class="al">휴지통으로 이동</span></button>
+            </div>
+            <button class="nv" id="vp" aria-label="이전">‹</button>
+            <button class="nv" id="vn" aria-label="다음">›</button>
+        </div>
+        <div id="dp">
+            <div id="dpb">
+                <p id="dpt"></p>
+                <p>해당 항목은 ‘휴지통’에서 최대 30일간 복구가 가능합니다.</p>
+                <button id="dpk"></button>
+            </div>
+        </div>
+        <div id="sheet">
+            <div>
+                <h3>새로운 앨범</h3><input id="nm" placeholder="앨범 이름" maxlength="20">
+                <div class="em" id="em"></div>
+                <div class="row">
+                    <button id="sc">취소</button>
+                    <button class="p" id="sk">저장</button>
+                </div>
+            </div>
+        </div>
+        <div id="dsheet">
+            <div>
+                <h3>날짜 변경</h3>
+                <div class="row" style="margin:0">
+                    <select id="dy"></select>
+                    <select id="dm"></select>
+                    <select id="dd"></select>
+                </div>
+                <div class="row">
+                    <button id="dc">취소</button>
+                    <button class="p" id="dk">저장</button>
+                </div>
+            </div>
+        </div>
+        <div id="pv">
+            <div>
+                <div id="pvm"></div>
+                <div id="pvt"></div>
+                <div class="row">
+                    <button id="pc">닫기</button>
+                    <button class="p" id="pr">복구</button>
+                </div>
+            </div>
+        </div>
+        <div id="ysheet">
+            <div>
+                <h3 id="ysh3">연도 추가</h3>
+                <div class="row" style="margin:0">
+                    <select id="yy"></select>
+                </div>
+                <div class="row">
+                    <button id="yc">취소</button>
+                    <button class="p" id="yk">추가</button>
+                </div>
+            </div>
+        </div>
+        <input
+            type="file"
+            id="file"
+            accept="image/*,video/*"
+            multiple="multiple"
+            hidden="hidden">
+        <!-- script.js를 모듈 형태로 불러오도록 수정 -->
+        <script type="module" src="script.js"></script>
+    </body>
+</html>
