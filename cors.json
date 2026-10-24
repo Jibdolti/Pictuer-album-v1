@@ -1,6 +1,7 @@
 [
   {
-    "origin": ["https://jibdolti.github.io/Pictuer-album-v1/"],
+    "origin": ["https://jibdolti.github.io
+      "],
     "method": ["GET", "HEAD"],
     "responseHeader": ["Content-Type", "Range"],
     "maxAgeSeconds": 3600
