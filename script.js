@@ -1824,3 +1824,34 @@ async function trashMany() {
 load(function () {
     render();
 });
+
+// 🔐 파이어베이스 인증 상태 감지 및 로그인 화면 제어 로직 추가
+onAuthStateChanged(auth, (user) => {
+    var loginScreen = document.getElementById('login-screen');
+    var appEl = document.getElementById('app');
+
+    if (user) {
+        // [로그인 성공 상태]: 로그인 화면 숨기고 앨범 앱 보여주기
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (appEl) appEl.style.display = 'block';
+        
+        load(function () {
+            render();
+        });
+    } else {
+        // [비로그인 상태]: 앨범 앱 숨기고 구글 로그인 화면 보여주기
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (appEl) appEl.style.display = 'none';
+    }
+});
+
+// 구글 로그인 버튼 클릭 이벤트 연결
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'google-login-btn') {
+        signInWithPopup(auth, provider).catch((error) => {
+            console.error("로그인 실패:", error);
+            alert("로그인에 실패했습니다. 다시 시도해 주세요.");
+        });
+    }
+
+});
