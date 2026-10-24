@@ -1146,6 +1146,96 @@ h1::after {
         cursor: grab;
     }
 }
+.ck {
+    display: none;
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: rgba(0,0,0,.28);
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+.selm .ck {
+    display: flex;
+}
+.picked .ck {
+    background: var(--blue);
+}
+.picked .ck::after {
+    content: "";
+    width: 6px;
+    height: 11px;
+    border: solid #fff;
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg) translate(-1px,-1px);
+}
+.picked img {
+    opacity: 0.65;
+}
+.selm .hb {
+    display: none;
+}
+.selm #tabs,
+.selm #th {
+    display: none;
+}
+.selm #main {
+    padding-bottom: 88px;
+}
+#selbar {
+    display: none;
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: calc(21px + env(safe-area-inset-bottom,0px)*.5);
+    height: 60px;
+    z-index: 8;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 10px;
+    border-radius: 34px;
+    background: var(--bar);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border: 0.5px solid var(--line);
+    box-sizing: border-box;
+    max-width: 868px;
+    margin: 0 auto;
+}
+.selm #selbar {
+    display: flex;
+}
+#selbar button {
+    border: 0;
+    border-radius: 24px;
+    height: 44px;
+    padding: 0 18px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--bg2);
+    color: var(--blue);
+    white-space: nowrap;
+}
+#selbar #sdl {
+    background: #ff3b30;
+    color: #fff;
+}
+#selbar #sdl:disabled {
+    opacity: 0.4;
+}
+#sn {
+    font-size: 15px;
+    color: var(--fg);
+    font-weight: 600;
+}
 #dp {
     position: fixed;
     inset: 0;
@@ -1187,4 +1277,7 @@ h1::after {
     font-weight: 600;
     cursor: pointer;
     margin-top: 6px;
+}
+.dl button.bl {
+    color: var(--blue);
 }
