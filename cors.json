@@ -1,7 +1,6 @@
 [
   {
-    "origin": ["https://jibdolti.github.io
-      "],
+    "origin": ["https://jibdolti.github.io"],
     "method": ["GET", "HEAD"],
     "responseHeader": ["Content-Type", "Range"],
     "maxAgeSeconds": 3600
