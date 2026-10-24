@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -123,7 +123,7 @@ function grid(list) {
             : '아직 사진이 없어요'
     ) + '</div>'
 }
-function render() {
+function render0() {
     var m = $("main"),
         b = $("back"),
         t = $("ttl");
@@ -185,7 +185,7 @@ function render() {
         t.textContent = a.n;
         t.style.opacity = 1;
         vlist = ph(cur);
-        m.innerHTML = '<h1>' + esc(a.n) + '</h1>' + vgrid(vlist) + '<div class="dl"><button data-del="1">앨범 삭제</button></div>';
+        m.innerHTML = '<h1>' + esc(a.n) + '<button class="hp" data-sel="1">선택</button></h1>' + vgrid(vlist) + '<div class="dl"><button data-del="1">앨범 삭제</button></div>';
         return
     }
     b.textContent = "";
@@ -226,10 +226,22 @@ $("main").addEventListener("click", function (e) {
         .closest(
             "[data-a],[data-new],[data-i],[data-add],[data-m],[data-del],[data-c],[data-y]," +
             "[data-ny],[data-dy],[data-pick],[data-tr],[data-rs],[data-pd],[data-te],[data-" +
-            "tp],[data-u],[data-f]"
+            "tp],[data-u],[data-f],[data-sel],[data-rg]"
         );
     if (!el) 
         return;
+    if (sel !== null && el.dataset.i !== undefined) {
+        selTap(el);
+        return
+    }
+    if (el.dataset.sel) {
+        selToggle();
+        return
+    }
+    if (el.dataset.rg) {
+        regenThumbs(el);
+        return
+    }
     if (el.dataset.f) {
         tf(el.dataset.f);
         return
@@ -376,7 +388,8 @@ $("file").onchange = async function (e) {
         var f = fs[i],
             id = Date.now() + "_" + i;
         if (f.type.indexOf("video/") === 0) {
-            var pd = (await vposter(f)) || VPH;
+            var pd = await vposter(f);
+            var thumbUrl = await saveThumb(id, pd);
             var videoRef = ref(storage, 'videos/' + id + '_' + f.name);
             await uploadBytes(videoRef, f);
             var videoUrl = await getDownloadURL(videoRef);
@@ -384,7 +397,7 @@ $("file").onchange = async function (e) {
             var photoObj = {
                 id: id,
                 a: a,
-                d: pd,
+                d: thumbUrl,
                 vUrl: videoUrl,
                 t: f.lastModified || Date.now() + i,
                 v: 1,
@@ -508,6 +521,11 @@ $("vx").onclick = function () {
     }
 };
 $("dpk").onclick = async function () {
+    if (dpm) {
+        $("dp").classList.remove("on");
+        await trashMany();
+        return
+    }
     $("dp")
         .classList
         .remove("on");
@@ -817,15 +835,24 @@ function exifDate(f) {
     }
 var VPH = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height=" +
             "'3'%3E%3Crect width='4' height='3' fill='%23333'/%3E%3C/svg%3E";
+// 영상에서 썸네일(JPG dataURL)을 뽑는다. f는 File/Blob 또는 영상 주소(string)
+// - 첫 장면이 검으면 다른 시점(1.5초, 0.1초, 3초)으로 다시 시도한다
+// - 화면이 실제로 그려진 뒤에 캡처한다(requestVideoFrameCallback 사용)
 function vposter(f) {
     return new Promise(function (ok) {
-        var u = URL.createObjectURL(f),
+        var isUrl = typeof f === "string",
+            u = isUrl
+                ? f
+                : URL.createObjectURL(f),
             v = document.createElement("video"),
             tr = [
-                .5, 1.5, .1
+                .5, 1.5, .1, 3
             ],
             ti = 0,
-            fin = false;
+            fin = false,
+            tm = null;
+        if (isUrl) 
+            v.crossOrigin = "anonymous";
         v.muted = true;
         v.playsInline = true;
         v.preload = "auto";
@@ -834,10 +861,16 @@ function vposter(f) {
             if (fin) 
                 return;
             fin = true;
+            clearTimeout(tm);
             try {
                 v.pause()
             } catch (e) {}
-            URL.revokeObjectURL(u);
+            v.removeAttribute("src");
+            try {
+                v.load()
+            } catch (e) {}
+            if (!isUrl) 
+                URL.revokeObjectURL(u);
             ok(r)
         }
         function snap() {
@@ -850,30 +883,59 @@ function vposter(f) {
                 c.height = Math.max(1, Math.round(v.videoHeight * s));
                 var x = c.getContext("2d");
                 x.drawImage(v, 0, 0, c.width, c.height);
+                var d = x
+                        .getImageData(0, 0, c.width, c.height)
+                        .data,
+                    sum = 0,
+                    n = 0;
+                for (var i = 0; i < d.length; i += 160) {
+                    sum += d[i] + d[i + 1] + d[i + 2];
+                    n++
+                }
                 return {
                     u: c.toDataURL("image/jpeg", .7),
-                    b: 50
+                    b: sum / n / 3
                 }
             } catch (e) {
                 return null
             }
         }
         function seek() {
+            var d = v.duration || 0,
+                t = tr[ti];
+            if (d && isFinite(d) && t > d * .9) 
+                t = d / 2;
             try {
-                v.currentTime = tr[ti]
+                v.currentTime = t
             } catch (e) {}
         }
         v.onloadedmetadata = function () {
-            f.du = v.duration;
+            if (!isUrl) 
+                f.du = v.duration;
+            vposter.du = v.duration;
             seek()
         };
         v.onseeked = function () {
-            var r = snap();
-            if (!r) {
-                done(null);
-                return
+            var fired = false;
+            function go() {
+                if (fired) 
+                    return;
+                fired = true;
+                var r = snap();
+                if (!r) {
+                    done(null);
+                    return
+                }
+                if (r.b > 12 || ti >= tr.length - 1) {
+                    done(r.u);
+                    return
+                }
+                ti++;
+                seek()
             }
-            done(r.u)
+            if (v.requestVideoFrameCallback) 
+                v.requestVideoFrameCallback(go);
+            setTimeout(go, 300)
         };
         v.onerror = function () {
             done(null)
@@ -882,15 +944,72 @@ function vposter(f) {
         var pr = v.play();
         if (pr && pr.catch) 
             pr.catch(function () {});
-        setTimeout(function () {
+        tm = setTimeout(function () {
             var r = snap();
             done(
                 r
                     ? r.u
                     : null
             )
-        }, 8000)
+        }, 12000)
     })
+}
+// 썸네일을 Storage에 올리고 주소를 돌려준다(실패하면 dataURL 그대로, 아예 못 뽑았으면 회색 그림)
+async function saveThumb(id, dataUrl) {
+    if (!dataUrl) 
+        return VPH;
+    try {
+        var tb = await(await fetch(dataUrl)).blob();
+        var tref = ref(storage, 'thumbs/' + id + '.jpg');
+        await uploadBytes(tref, tb);
+        return await getDownloadURL(tref)
+    } catch (e) {
+        console.error("썸네일 저장 실패:", e);
+        return dataUrl
+    }
+}
+// 이미 올린 영상들의 썸네일을 다시 만든다(Storage CORS 설정 필요: cors.json 참고)
+async function regenThumbs(btn) {
+    var vs = S
+        .photos
+        .filter(function (p) {
+            return p.v && p.vUrl
+        });
+    if (!vs.length) 
+        return;
+    var ok = 0,
+        fail = 0;
+    for (var i = 0; i < vs.length; i++) {
+        var p = vs[i];
+        btn.textContent = "썸네일 만드는 중 " + (i + 1) + "/" + vs.length;
+        try {
+            vposter.du = 0;
+            var du = await vposter(p.vUrl);
+            if (!du) {
+                fail++;
+                continue
+            }
+            p.d = await saveThumb(p.id, du);
+            if (vposter.du && isFinite(vposter.du)) 
+                p.du = vposter.du;
+            await setDoc(doc(db, "photos", p.id), p);
+            ok++
+        } catch (e) {
+            console.error(e);
+            fail++
+        }
+    }
+    btn.textContent = ok + "개 완료" + (
+        fail
+            ? " · " + fail + "개 실패(Storage CORS 설정을 확인하세요)"
+            : ""
+    );
+    setTimeout(function () {
+        var m = $("main"),
+            st = m.scrollTop;
+        render();
+        m.scrollTop = st
+    }, 2500)
 }
 var curY = null;
 function yrs() {
@@ -928,7 +1047,7 @@ function lgrid(l) {
     return '<div class="lg">' + l
         .map(function (p, i) {
             return '<div data-i="' + i + '"><img src="' + p.d + '" loading="lazy">' +
-                    hbtn(p) + (
+                    hbtn(p) + '<span class="ck"></span>' + (
                 p.v
                     ? '<span class="du">' + (
                         p.du
@@ -942,7 +1061,7 @@ function lgrid(l) {
 }
 function lib() {
     var l = vlist,
-        h = '<h1>보관함</h1><div class="sd" id="lsub">' + l.length + "개 항목</div>";
+        h = '<h1>보관함<button class="hp" data-sel="1">선택</button></h1><div class="sd" id="lsub">' + l.length + "개 항목</div>";
     return h + (
         l.length
             ? lgrid(l)
@@ -951,7 +1070,7 @@ function lib() {
 }
 function ylib(y) {
     var l = vlist;
-    return '<h1>' + y + '년</h1><div class="sd">사진 ' + l.length + '장</div>' + (
+    return '<h1>' + y + '년<button class="hp" data-sel="1">선택</button></h1><div class="sd">사진 ' + l.length + '장</div>' + (
         l.length
             ? lgrid(l)
             : '<div class="empty"><b>이 연도의 사진이 없어요</b>사진 날짜가 ' + y + '년인 사진이 여기 모여요.</div>'
@@ -1110,7 +1229,7 @@ function vgrid2(l) {
     return '<div class="vf">' + l
         .map(function (p, i) {
             return '<div class="ca" data-i="' + i + '"><img src="' + p.d + '" loading="lazy' +
-                    '">' + hbtn(p) + (
+                    '">' + hbtn(p) + '<span class="ck"></span>' + (
                 p.v
                     ? '<span class="pl">▶ ' + (
                         p.du
@@ -1284,10 +1403,14 @@ function tcard() {
 }
 function vidView() {
     var n = vlist.length;
-    return '<h1 class="nt">동영상</h1><div class="sd">동영상 ' + n + '개</div>' + (
+    return '<h1 class="nt">동영상<button class="hp" data-sel="1">선택</button></h1><div class="sd">동영상 ' + n + '개</div>' + (
         n
             ? lgrid(vlist)
             : '<div class="empty"><b>동영상이 없어요</b>앨범에 동영상을 추가하면 여기에 모여요.</div>'
+    ) + (
+        n
+            ? '<div class="dl"><button class="bl" data-rg="1">썸네일 다시 만들기</button></div>'
+            : ''
     )
 }
 function heart(on) {
@@ -1308,7 +1431,7 @@ function hbtn(p) {
 }
 function favView() {
     var n = vlist.length;
-    return '<h1 class="nt">즐겨찾기</h1><div class="sd">사진 ' + n + '장</div>' + (
+    return '<h1 class="nt">즐겨찾기<button class="hp" data-sel="1">선택</button></h1><div class="sd">사진 ' + n + '장</div>' + (
         n
             ? lgrid(vlist)
             : '<div class="empty"><b>즐겨찾기가 비어 있어요</b>사진의 하트를 누르면 여기에 모여요.</div>'
@@ -1475,6 +1598,7 @@ $("vsh").onclick = async function () {
     } catch (e) {}
 };
 $("vd").onclick = function () {
+    dpm = false;
     var p = vlist[vi];
     if (!p) 
         return;
@@ -1554,6 +1678,147 @@ function vload(s) {
         .call(s.querySelectorAll("video"), function (el) {
             // 이미 vUrl이 설정되어 있으므로 별도의 blob 로드 불필요
         });
+}
+
+// ===== 여러 장 선택 · 삭제 =====
+var sel = null,
+    dpm = false;
+function render() {
+    render0();
+    selApply()
+}
+function selApply() {
+    var m = $("main");
+    if (sel !== null && !m.querySelector(".lg,.vf")) 
+        sel = null;
+    document
+        .body
+        .classList
+        .toggle("selm", sel !== null);
+    if (sel === null) 
+        return;
+    []
+        .forEach
+        .call(m.querySelectorAll("[data-i]"), function (e) {
+            var p = vlist[+e.dataset.i];
+            e
+                .classList
+                .toggle("picked", !!(p && sel[p.id]))
+        });
+    []
+        .forEach
+        .call(m.querySelectorAll("[data-sel]"), function (b) {
+            b.textContent = "취소"
+        });
+    selBar()
+}
+function selBar() {
+    var n = Object
+            .keys(sel)
+            .length,
+        all = vlist.length > 0 && vlist.every(function (p) {
+            return sel[p.id]
+        });
+    $("sn").textContent = n
+        ? n + "개 선택됨"
+        : "항목 선택";
+    $("sdl").disabled = !n;
+    $("sal").textContent = all
+        ? "선택 해제"
+        : "전체 선택"
+}
+function selToggle() {
+    sel = sel === null
+        ? {}
+        : null;
+    render()
+}
+function selTap(el) {
+    var p = vlist[+el.dataset.i];
+    if (!p) 
+        return;
+    if (sel[p.id]) 
+        delete sel[p.id];
+    else 
+        sel[p.id] = 1;
+    el
+        .classList
+        .toggle("picked", !!sel[p.id]);
+    selBar()
+}
+$("sal").onclick = function () {
+    var all = vlist.length > 0 && vlist.every(function (p) {
+        return sel[p.id]
+    });
+    vlist.forEach(function (p) {
+        if (all) 
+            delete sel[p.id];
+        else 
+            sel[p.id] = 1
+    });
+    selApply()
+};
+$("sdl").onclick = function () {
+    var n = Object
+        .keys(sel || {})
+        .length;
+    if (!n) 
+        return;
+    dpm = true;
+    $("dpt").textContent = "선택한 항목 " + n + "개가 삭제됩니다.";
+    $("dpk").textContent = n + "개 삭제";
+    $("dp")
+        .classList
+        .add("on")
+};
+// 여러 장을 휴지통으로 옮긴다. 화면(S)은 바로 바꾸고, Firestore는 한 번에(배치) 정리한다
+async function trashPhotos(ids) {
+    var set = {},
+        now = Date.now(),
+        moved = [];
+    ids.forEach(function (i) {
+        set[i] = 1
+    });
+    S
+        .photos
+        .forEach(function (p) {
+            if (set[p.id]) {
+                p.x = now;
+                moved.push(p)
+            }
+        });
+    S.photos = S
+        .photos
+        .filter(function (p) {
+            return !set[p.id]
+        });
+    moved.forEach(function (p) {
+        (S.trash = S.trash || []).push(p)
+    });
+    try {
+        for (var i = 0; i < moved.length; i += 400) {
+            var b = writeBatch(db);
+            moved
+                .slice(i, i + 400)
+                .forEach(function (p) {
+                    b.delete(doc(db, "photos", p.id))
+                });
+            await b.commit()
+        }
+        await save()
+    } catch (e) {
+        console.error("삭제 실패:", e)
+    }
+}
+async function trashMany() {
+    var ids = Object.keys(sel || {});
+    sel = null;
+    var m = $("main"),
+        st = m.scrollTop,
+        job = trashPhotos(ids);
+    render();
+    m.scrollTop = st;
+    await job
 }
 
 load(function () {
