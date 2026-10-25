@@ -2,9 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebas
 import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-storage.js";
 
-// 👇 [필수] 이 줄이 빠져 있어서 에러가 난 것입니다. 이 코드를 맨 위에 추가해 주세요!
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
-
 const firebaseConfig = {
     apiKey: "AIzaSyDuUlUyAQ5i89DIHqkyok61oyokqCQY_pA",
     authDomain: "family-album-b6cb0.firebaseapp.com",
@@ -17,8 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const auth = getAuth(app);              // ← 여기 추가
-const provider = new GoogleAuthProvider(); // ← 여기 추가
 
 var EMO = [
     "👨‍👩‍👧",
@@ -1828,28 +1823,4 @@ async function trashMany() {
 
 load(function () {
     render();
-});
-
-// 🔐 파이어베이스 인증 상태 감지 및 로그인 화면 제어 로직 (지연 안전장치 추가)
-onAuthStateChanged(auth, (user) => {
-    var loginScreen = document.getElementById('login-screen');
-    var appEl = document.getElementById('app');
-
-    if (user) {
-        // [로그인 성공 상태]: 로그인 화면 숨기고 앨범 앱 보여주기
-        if (loginScreen) loginScreen.style.display = 'none';
-        if (appEl) appEl.style.display = 'block';
-        
-        // 💡 인증 토큰이 서버에 완전히 반영될 수 있도록 0.5초(500ms) 여유를 두고 데이터 로드
-        setTimeout(() => {
-            load(function () {
-                render();
-            });
-        }, 500);
-
-    } else {
-        // [비로그인 상태]: 앨범 앱을 숨기고 구글 로그인 화면 보여주기
-        if (loginScreen) loginScreen.style.display = 'flex';
-        if (appEl) appEl.style.display = 'none';
-    }
 });
