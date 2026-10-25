@@ -1,6 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-storage.js";
+
+// 👇 [필수] 이 줄이 빠져 있어서 에러가 난 것입니다. 이 코드를 맨 위에 추가해 주세요!
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDuUlUyAQ5i89DIHqkyok61oyokqCQY_pA",
@@ -14,7 +17,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
-
+const auth = getAuth(app);              // ← 여기 추가
+const provider = new GoogleAuthProvider(); // ← 여기 추가
 var EMO = [
     "👨‍👩‍👧",
     "🎂",
