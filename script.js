@@ -1824,27 +1824,3 @@ async function trashMany() {
 load(function () {
     render();
 });
-
-// 🔐 파이어베이스 인증 상태 감지 및 로그인 화면 제어 로직 (지연 안전장치 추가)
-onAuthStateChanged(auth, (user) => {
-    var loginScreen = document.getElementById('login-screen');
-    var appEl = document.getElementById('app');
-
-    if (user) {
-        // [로그인 성공 상태]: 로그인 화면 숨기고 앨범 앱 보여주기
-        if (loginScreen) loginScreen.style.display = 'none';
-        if (appEl) appEl.style.display = 'block';
-        
-        // 💡 인증 토큰이 서버에 완전히 반영될 수 있도록 0.5초(500ms) 여유를 두고 데이터 로드
-        setTimeout(() => {
-            load(function () {
-                render();
-            });
-        }, 500);
-
-    } else {
-        // [비로그인 상태]: 앨범 앱을 숨기고 구글 로그인 화면 보여주기
-        if (loginScreen) loginScreen.style.display = 'flex';
-        if (appEl) appEl.style.display = 'none';
-    }
-});
