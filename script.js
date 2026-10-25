@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -14,6 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
 
 var EMO = [
     "👨‍👩‍👧",
@@ -91,6 +93,14 @@ async function load(cb) {
         cb();
     } catch (e) {
         console.error("불러오기 실패:", e);
+        if (e && e.code === "permission-denied") {
+            S.photos = [];
+            lockShow(
+                "이 구글 계정(" + ((auth.currentUser && auth.currentUser.email) || "") + ")은 이 앨범을 볼 수 없어요.\n가족 계정으로 다시 로그인해 주세요.",
+                {out: true, login: false}
+            );
+            return
+        }
         cb();
     }
 }
@@ -226,7 +236,7 @@ $("main").addEventListener("click", function (e) {
         .closest(
             "[data-a],[data-new],[data-i],[data-add],[data-m],[data-del],[data-c],[data-y]," +
             "[data-ny],[data-dy],[data-pick],[data-tr],[data-rs],[data-pd],[data-te],[data-" +
-            "tp],[data-u],[data-f],[data-sel],[data-rg]"
+            "tp],[data-u],[data-f],[data-sel],[data-rg],[data-lo]"
         );
     if (!el) 
         return;
@@ -236,6 +246,12 @@ $("main").addEventListener("click", function (e) {
     }
     if (el.dataset.sel) {
         selToggle();
+        return
+    }
+    if (el.dataset.lo) {
+        signOut(auth).then(function () {
+            location.reload()
+        });
         return
     }
     if (el.dataset.rg) {
@@ -658,7 +674,11 @@ function home() {
         rc
             ? sec("rec", "최근 항목", rc)
             : ""
-    ) + sec("tr", "유틸리티", tcard())
+    ) + sec("tr", "유틸리티", tcard()) + '<div class="dl"><button class="bl" data-lo="1">로그아웃' + (
+        auth.currentUser && auth.currentUser.email
+            ? " (" + esc(auth.currentUser.email) + ")"
+            : ""
+    ) + '</button></div>'
 }(function () {
     var m = $("main"),
         d = null,
@@ -1821,6 +1841,60 @@ async function trashMany() {
     await job
 }
 
-load(function () {
-    render();
+// ===== 로그인(구글) =====
+// 화면 잠금은 편의 기능이고, 진짜 보안은 Firebase 보안 규칙(firestore.rules / storage.rules)이 맡는다
+var started = false,
+    inApp = /KAKAOTALK|FBAN|FBAV|Instagram|Line\/|NAVER\(inapp/i.test(navigator.userAgent);
+function lockShow(msg, o) {
+    o = o || {};
+    $("lock").classList.add("on");
+    $("lkm").textContent = msg;
+    $("lkb").style.display = o.login === false
+        ? "none"
+        : "";
+    $("lko").style.display = o.out
+        ? ""
+        : "none"
+}
+function lockHide() {
+    $("lock").classList.remove("on")
+}
+$("lkb").onclick = async function () {
+    try {
+        await signInWithPopup(auth, new GoogleAuthProvider())
+    } catch (e) {
+        console.error("로그인 실패:", e);
+        if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") 
+            return;
+        lockShow(
+            e.code === "auth/unauthorized-domain"
+                ? "이 주소가 Firebase ‘승인된 도메인’에 없어요.\nAuthentication → 설정에서 추가해 주세요."
+                : "로그인에 실패했어요. 잠시 뒤 다시 시도해 주세요."
+        )
+    }
+};
+$("lko").onclick = async function () {
+    await signOut(auth);
+    location.reload()
+};
+onAuthStateChanged(auth, function (user) {
+    if (!user) {
+        started = false;
+        if (inApp) 
+            lockShow(
+                "카카오톡 같은 앱 안에서는 구글 로그인이 막혀 있어요.\n메뉴에서 ‘Safari로 열기’ 또는 ‘다른 브라우저로 열기’를 눌러 주세요.",
+                {login: false}
+            );
+        else 
+            lockShow("가족만 볼 수 있는 앨범이에요.\n가족 구글 계정으로 로그인해 주세요.");
+        return
+    }
+    if (started) 
+        return;
+    started = true;
+    lockShow("불러오는 중…", {login: false});
+    load(function () {
+        lockHide();
+        render()
+    })
 });
