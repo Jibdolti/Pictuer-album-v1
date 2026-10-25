@@ -97,7 +97,7 @@ async function load(cb) {
             S.photos = [];
             lockShow(
                 "이 구글 계정(" + ((auth.currentUser && auth.currentUser.email) || "") + ")은 이 앨범을 볼 수 없어요.\n가족 계정으로 다시 로그인해 주세요.",
-                {out: true, login: false}
+                {out: true, login: false, label: "다른 계정으로 로그인"}
             );
             return
         }
@@ -1847,6 +1847,7 @@ var started = false,
     inApp = /KAKAOTALK|FBAN|FBAV|Instagram|Line\/|NAVER\(inapp/i.test(navigator.userAgent);
 function lockShow(msg, o) {
     o = o || {};
+    $("lko").textContent = o.label || "로그아웃";
     $("lock").classList.add("on");
     $("lkm").textContent = msg;
     $("lkb").style.display = o.login === false
@@ -1861,7 +1862,10 @@ function lockHide() {
 }
 $("lkb").onclick = async function () {
     try {
-        await signInWithPopup(auth, new GoogleAuthProvider())
+        var prov = new GoogleAuthProvider();
+        // 로그인할 때마다 구글 계정 선택 창을 띄운다(이전에 쓴 계정으로 자동 로그인되는 것을 막음)
+        prov.setCustomParameters({prompt: "select_account"});
+        await signInWithPopup(auth, prov)
     } catch (e) {
         console.error("로그인 실패:", e);
         if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") 
