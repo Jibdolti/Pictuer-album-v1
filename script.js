@@ -19,6 +19,7 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);              // ← 여기 추가
 const provider = new GoogleAuthProvider(); // ← 여기 추가
+
 var EMO = [
     "👨‍👩‍👧",
     "🎂",
