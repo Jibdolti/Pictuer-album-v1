@@ -522,6 +522,7 @@ function openV(i) {
     $("vd")
         .classList
         .remove("arm");
+    $("viewer").classList.remove("imm");
     s.scrollLeft = i * s.clientWidth;
     cnt()
 }
@@ -781,8 +782,11 @@ $("dk").onclick = async function () {
             o.getHours(),
             o.getMinutes()
         ).getTime();
+        var nyr = yrs().indexOf(new Date(p.t).getFullYear()) < 0;
         ay(p.t);
         await setDoc(doc(db, "photos", p.id), p);
+        if (nyr) 
+            await save();
         dirty = true;
         cnt()
     }
@@ -1067,7 +1071,7 @@ function lgrid(l) {
     return '<div class="lg">' + l
         .map(function (p, i) {
             return '<div data-i="' + i + '"><img src="' + p.d + '" loading="lazy">' +
-                    hbtn(p) + '<span class="ck"></span>' + (
+                    albadge(p) + hbtn(p) + '<span class="ck"></span>' + (
                 p.v
                     ? '<span class="du">' + (
                         p.du
@@ -1657,6 +1661,7 @@ $("dp").addEventListener("click", function (e) {
         var dx = e.clientX - d.x;
         if (!d.m && Math.abs(dx) > 4) {
             d.m = true;
+            vmoved = true;
             s.style.scrollSnapType = "none";
             s.style.cursor = "grabbing"
         }
@@ -1839,6 +1844,56 @@ async function trashMany() {
     render();
     m.scrollTop = st;
     await job
+}
+
+// ===== 사진을 옆으로 넘길 때 '지금 보는 사진' 갱신 (하트·삭제·날짜·썸네일 띠가 이 값을 따라간다) =====
+$("vs").addEventListener("scroll", function () {
+    var s = $("vs"),
+        n = Math.max(0, Math.min(vlist.length - 1, Math.round(s.scrollLeft / s.clientWidth)));
+    if (!s.clientWidth || n === vi) 
+        return;
+    vi = n;
+    []
+        .forEach
+        .call(s.querySelectorAll("video"), function (v) {
+            v.pause()
+        });
+    cnt()
+});
+
+// ===== 사진을 누르면 주변 버튼 숨기기 / 아무 곳이나 누르면 다시 보이기 =====
+var vmoved = false;
+$("viewer").addEventListener("pointerdown", function () {
+    vmoved = false
+}, true);
+$("viewer").addEventListener("click", function (e) {
+    if (vmoved) {
+        vmoved = false;
+        return
+    }
+    var v = $("viewer");
+    if (v.classList.contains("imm")) {
+        v.classList.remove("imm");
+        return
+    }
+    if (e.target.closest("#vs") && e.target.tagName !== "VIDEO") 
+        v.classList.add("imm")
+});
+// ===== 보관함 등에서 사진이 속한 앨범을 색깔 이름표로 표시 =====
+function albadge(p) {
+    var a = null,
+        n = 0;
+    S
+        .albums
+        .forEach(function (x, k) {
+            if (x.id === p.a) {
+                a = x;
+                n = k
+            }
+        });
+    if (!a) 
+        return '<span class="ab" style="background:rgba(96,96,100,.92)">앨범 없음</span>';
+    return '<span class="ab" style="background:hsl(' + ((n * 67 + 200) % 360) + ' 55% 36% / .92)">' + esc(a.e + " " + a.n) + '</span>'
 }
 
 // ===== 로그인(구글) =====
